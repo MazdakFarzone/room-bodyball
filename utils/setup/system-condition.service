@@ -1,0 +1,11 @@
+[Unit]
+Description=Teamification System Condition Service
+After=display-manager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/uh/system-handler/systemhandler.py
+Restart=always
+
+[Install]
+WantedBy=default.target

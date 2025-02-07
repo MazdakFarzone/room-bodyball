@@ -1,0 +1,4 @@
+[Desktop Entry]
+Type=Application
+Name=Game
+Exec=/bin/bash -c "sleep 5; xterm -hold -e '/usr/bin/python3 /home/uh/uh-testroom/main.py'"
