@@ -1,0 +1,4 @@
+[Desktop Entry]
+Type=Application
+Name=Game
+Exec=xterm -hold -e '/usr/bin/python3 /home/uh/room-supermario/main.py'
