@@ -301,6 +301,7 @@ class ServerCommunicator(object):
             self.room_type = DoubleRoomType(str(config['roomType'])) 
             self.room_other = config['otherRoomNbr']
             self.mqttclient.subscribe("room/" + self.room_other + "/room_status", qos=2)
+            self.mqttclient.subscribe("door/" + self.room_other + "/door_status", qos=2)
             print(f"ServerFinder: Recieved a double room configuration - {self.room_type.name} - other room nbr: {self.room_other}")
         else:
             self.room_type = None
