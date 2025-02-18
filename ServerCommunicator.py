@@ -8,7 +8,7 @@ import string
 import json
 
 from threading import Timer
-from constants import DoubleRoomType
+from .constants import DoubleRoomType
 
 import netifaces
 import socket
