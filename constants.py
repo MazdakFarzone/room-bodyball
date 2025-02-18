@@ -29,6 +29,11 @@ class RoomStatus(Enum):
     READY = "ready"
     ENDED = "game ended"
 
+class DoubleRoomType(Enum):
+    """ What type of combined room is it? React accordingly"""
+    COMPETITION = "competitive"
+    COOPERATIVE = "cooperative"
+    
 class DoorStatus(Enum):
     """ Extened info coming from the door is described here """
     DOOR_OPENING_STARTING = "Door Opening (Starting)"

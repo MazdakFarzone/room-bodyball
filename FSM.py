@@ -2,7 +2,7 @@ from transitions import Machine, EventData
 from transitions.extensions.states import add_state_features, Timeout
 
 from .AudioHandler import AudioHandler, AudioType
-from .constants import Access, BadEvent, RoomStatus, GameStatus, DoorStatus, Language, Topics
+from .constants import Access, BadEvent, RoomStatus, GameStatus, DoorStatus, Language, Topics, DoubleRoomType
 from .ServerCommunicator import ServerFinder, ServerCommunicator
 from .GameTimer import GameTimer
 from .log import Log
@@ -101,7 +101,8 @@ class GameLogic(object):
         self.__on_connection_lost = on_connection_lost
         
         self.communicator = ServerCommunicator(
-            lambda: self.trigger("server_connected"), self.__cb_lost_server, self.__cb_server_conf_recieved, self.__cb_server_message_received)
+            lambda: self.trigger("server_connected"), self.__cb_lost_server, self.__cb_server_conf_recieved, self.__cb_server_message_received, 
+            on_message_other_room = self.__cb_on_message_other_received)
         self.server_finder = ServerFinder(self.__cb_found_server)
 
         self.machine = TimeoutMachine(model=self, states=GameLogic.states, transitions=GameLogic.transitions,
@@ -303,6 +304,29 @@ class GameLogic(object):
 
         # Debug print
         # print("LOGIC: Recieved topic: " + topic + " - message: " + json.dumps(message))
+
+    def __cb_on_message_other_received(self, topic, msg):
+        if Topics.ROOM_STATUS.value in topic:
+            other_room_status = msg["status"]
+            type = self.communicator.get_room_type()
+            
+            if other_room_status == RoomStatus.LOST.value:
+                if type == DoubleRoomType.COMPETITION.value:
+                    self.trigger("game_won")
+                elif type == DoubleRoomType.COOPERATIVE.value:
+                    self.trigger("game_lost")
+
+            elif other_room_status == RoomStatus.WON.value:
+                if type == DoubleRoomType.COMPETITION.value:
+                    self.trigger("game_lost")
+                elif type == DoubleRoomType.COOPERATIVE.value:
+                    self.trigger("game_won")
+                    
+            elif other_room_status == RoomStatus.RESET.value:
+                if type == DoubleRoomType.COMPETITION.value:
+                    self.trigger("game_won")
+                elif type == DoubleRoomType.COOPERATIVE.value:
+                    self.trigger("game_reset")
 
     def __cb_server_conf_recieved(self, success, config: dict):
         if success:
