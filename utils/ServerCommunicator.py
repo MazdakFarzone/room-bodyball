@@ -270,7 +270,7 @@ class ServerCommunicator(object):
             self.on_config_received(decoded_message)
             return
 
-        if self.room_other and f"/{str(self.room_other)}/" in msg.topic:
+        if self.room_other and f"/{self.room_other}/" in msg.topic:
             other_room = True
 
         if not other_room:
@@ -299,9 +299,9 @@ class ServerCommunicator(object):
         # Do we have a special room?
         if 'roomType' in config:
             self.room_type = DoubleRoomType(str(config['roomType'])) 
-            self.room_other = int(config['otherRoomNbr'])
+            self.room_other = config['otherRoomNbr']
             self.mqttclient.subscribe("room/" + self.room_other + "/room_status", qos=2)
-            print(f"ServerFinder: Recieved a double room configuration - {self.room_type.name} - other room nbr: {str(self.room_other)}")
+            print(f"ServerFinder: Recieved a double room configuration - {self.room_type.name} - other room nbr: {self.room_other}")
         else:
             self.room_type = None
 
