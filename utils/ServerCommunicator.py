@@ -8,6 +8,7 @@ import string
 import json
 
 from threading import Timer
+from constants import DoubleRoomType
 
 import netifaces
 import socket
@@ -135,7 +136,7 @@ class ServerCommunicator(object):
 
     def __init__(self, on_connect: Callable[[None], None], on_server_lost: Callable[[None], None], 
                  on_config: Callable[[bool, dict], None], on_message: Callable[[str, str], None],
-                 is_a_spy: bool = False
+                 is_a_spy: bool = False, on_message_other_room: Callable[[str, str], None] = None
                  ):
         """Init the Server communicator to talk with the MQTT Server
 
@@ -147,11 +148,14 @@ class ServerCommunicator(object):
             `is_a_spy` (`bool`, optional): Ask the server to not update room health/monitor with this connection. Defaults to `False`, 
         """
         self.message_callback = on_message
+        self.message_from_other_callback = on_message_other_room
         self.connect_callback = on_connect
         self.config_callback = on_config
         self.disconnect_callback = on_server_lost
         self.is_a_spy = is_a_spy
 
+        self.room_other = None
+        
         self.macaddress = str(netifaces.ifaddresses('eth0')[
                               netifaces.AF_LINK][0]['addr'])
 
@@ -260,10 +264,19 @@ class ServerCommunicator(object):
 
     def on_message_received(self, client, userdata, msg):
         decoded_message = json.loads(msg.payload.decode())
+        other_room = False
+
         if "config" in msg.topic:
             self.on_config_received(decoded_message)
-        else:
+            return
+
+        if self.room_other and f"/{str(self.room_other)}/" in msg.topic:
+            other_room = True
+
+        if not other_room:
             self.message_callback(msg.topic, decoded_message)
+        else:
+            self.message_from_other_callback(msg.topic, decoded_message)
 
     def on_config_received(self, config):
         # Setup all the jobs and unsubscribe any previous engagements
@@ -282,6 +295,15 @@ class ServerCommunicator(object):
         self.mqttclient.subscribe("room/" + self.room + "/set_status", 2)
         self.mqttclient.subscribe("door/" + self.room + "/door_status", 2)
         self.mqttclient.subscribe("door/" + self.room + "/tag_scan_result", 2)
+
+        # Do we have a special room?
+        if 'roomType' in config:
+            self.room_type = DoubleRoomType(str(config['roomType'])) 
+            self.room_other = int(config['otherRoomNbr'])
+            self.mqttclient.subscribe("room/" + self.room_other + "/room_status", qos=2)
+            print(f"ServerFinder: Recieved a double room configuration - {self.room_type.name} - other room nbr: {str(self.room_other)}")
+        else:
+            self.room_type = None
 
         self.config_callback(True, config)
 
@@ -303,6 +325,9 @@ class ServerCommunicator(object):
             self.ping_job.remove()
             self.ping_job = None
 
+    def get_room_type(self):
+        return self.room_type
+    
     def send_ping(self):
         ip = self.__get_ip_addr()
         message = {"mac": self.macaddress, "ip": ip, "type": "room"}
