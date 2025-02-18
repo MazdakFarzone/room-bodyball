@@ -306,27 +306,37 @@ class GameLogic(object):
         # print("LOGIC: Recieved topic: " + topic + " - message: " + json.dumps(message))
 
     def __cb_on_message_other_received(self, topic, msg):
+        type = self.communicator.get_room_type()
+
         if Topics.ROOM_STATUS.value in topic:
             other_room_status = msg["status"]
-            type = self.communicator.get_room_type()
             
             if other_room_status == RoomStatus.LOST.value:
                 if type == DoubleRoomType.COMPETITION.value:
-                    self.trigger("game_won")
+                    self.trigger("game_won", other_room=True)
                 elif type == DoubleRoomType.COOPERATIVE.value:
-                    self.trigger("game_lost")
+                    self.trigger("game_lost", other_room=True)
 
             elif other_room_status == RoomStatus.WON.value:
                 if type == DoubleRoomType.COMPETITION.value:
-                    self.trigger("game_lost")
+                    self.trigger("game_lost", other_room=True)
                 elif type == DoubleRoomType.COOPERATIVE.value:
-                    self.trigger("game_won")
+                    self.trigger("game_won", other_room=True)
                     
             elif other_room_status == RoomStatus.RESET.value:
                 if type == DoubleRoomType.COMPETITION.value:
-                    self.trigger("game_won")
+                    self.trigger("game_won", other_room=True)
                 elif type == DoubleRoomType.COOPERATIVE.value:
-                    self.trigger("game_reset")
+                    self.trigger("game_reset", other_room=True)
+
+        elif Topics.DOOR_STATUS.value in topic:
+            other_room_info = msg['info']
+
+            if other_room_info == DoorStatus.DOOR_OPENED_FAILED.value:
+                if type == DoubleRoomType.COMPETITION.value:
+                    self.trigger("game_won", other_room=True)
+                elif type == DoubleRoomType.COOPERATIVE.value:
+                    self.trigger("game_lost", other_room=True)
 
     def __cb_server_conf_recieved(self, success, config: dict):
         if success:
@@ -452,6 +462,8 @@ class GameLogic(object):
         self.game_active = False
         self.__game_timer.cancel()
 
+        is_from_other_room: bool = event.kwargs.get("other_room", False)
+
         # You opened the door and ended the game, or held the door open for too long
         # Will occur if the team aren't closing the door fast enough!
         if (str(event.event.name) == 'door_failed'):
@@ -479,10 +491,16 @@ class GameLogic(object):
             max_level_reached = AudioType.MAX_REACHED if level == len(self.__points) else AudioType.POSITIVE
             self.audio_handler.play_winning_sound(True, int(self.__points[level-1]), max_level_reached)
 
+            if is_from_other_room:
+                self.game_went_wrong(BadEvent.DOUBLE_ROOM_WON)
+
         elif (str(event.event.name) == 'game_lost'):
             with_feedback = event.kwargs.get("feedback")
             close_call = event.kwargs.get("close")
             self.audio_handler.play_losing_sound(run_end_voice=with_feedback, close_call=close_call)
+
+            if is_from_other_room:
+                self.game_went_wrong(BadEvent.DOUBLE_ROOM_FAILED)
 
             if not self.__debug_mode:
                 self.communicator.send_room_status(RoomStatus.LOST.value)
