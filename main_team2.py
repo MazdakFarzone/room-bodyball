@@ -21,7 +21,7 @@ class TheGame():
         self.devs = []
 
         for setup_list in PINS.photocells_list:
-            dev = DigitalInputDevice(setup_list['pin'], pull_up=True, bounce_time=0.05)
+            dev = DigitalInputDevice(setup_list['pin'], pull_up=True, bounce_time=0.01)
             dev.when_deactivated = lambda team=setup_list['team']: self.on_score(team)
             self.devs.append(dev)
 
@@ -29,7 +29,7 @@ class TheGame():
                                self.on_something_went_wrong, self.on_connection_lost, game_length_sec=GS.game_time)
         
         self.logic.auto_play_background_music = False
-        self.logic.audio_handler.change_ending_volume(1.0)
+        self.logic.audio_handler.change_ending_volume(0.7)
         self.logic.handle_max_time_reached(self.max_time_reached)
         self.logic.set_double_room_event_listener(self.on_other_room_reported)
         self.logic.start(debug_mode=GS.debug_mode)
@@ -42,31 +42,34 @@ class TheGame():
             print(f"SCORE: Got score from: {team.name}")
         
         if team == Team.TEAM1:
-            self.logic.audio_handler.play_custom_sound_now(Audio.team1_score, Audio.path, 1, 1.5)
+            audio_file = Audio.team1_score
             self.scores[0] += 1
         else:
-            self.logic.audio_handler.play_custom_sound_now(Audio.team2_score, Audio.path, 2, 1.5)
+            audio_file = Audio.team2_score
             self.scores[1] += 1
         
         if self.sudden_death:
             self.max_time_reached()
+        else:
+            self.logic.audio_handler.play_custom_sound_now(audio_file, Audio.path, 2, 1.2)
+
         
     def max_time_reached(self):
         if self.scores[0] > self.scores[1]:
             self.logic.room_lost()
             self.logic.audio_handler.stop_all_music_and_sound()
-            self.logic.audio_handler.set_custom_sound(Audio.team1_won, directory=Audio.path)
-            self.logic.audio_handler.play_custom_sound()
+            self.logic.audio_handler.play_custom_sound_now(Audio.team1_won, Audio.path, 1, 1.2)
             self.accept_goal = False
         
         elif self.scores[1] > self.scores[0]:
             self.logic.room_won()
             self.logic.audio_handler.stop_all_music_and_sound()
-            self.logic.audio_handler.set_custom_sound(Audio.team2_won, directory=Audio.path)
-            self.logic.audio_handler.play_custom_sound()
+            self.logic.audio_handler.play_custom_sound_now(Audio.team2_won, Audio.path, 1, 1.2)
             self.accept_goal = False
 
         else:
+            self.logic.audio_handler.set_custom_sound(Audio.sudden_death, directory=Audio.path)
+            self.logic.audio_handler.play_custom_sound()
             self.sudden_death = True
 
     def on_game_idle(self):
@@ -87,10 +90,13 @@ class TheGame():
     def on_something_went_wrong(self, event: BadEvent):
         """ Is triggered when something bad has happened as described by the parameter 'BadEvent' """
         self.logic.audio_handler.stop_all_music_and_sound()
-        self.logic.audio_handler.play_winning_sound(True, 500)
 
         if event == BadEvent.GAME_ENDED:
             self.max_time_reached()
+        elif event == BadEvent.DOOR_OPENED:
+            self.logic.audio_handler.set_custom_sound(Audio.team1_won, directory=Audio.path)
+            self.logic.audio_handler.play_custom_sound()
+            self.accept_goal = False
         else:
             self.accept_goal = False
 
@@ -98,14 +104,14 @@ class TheGame():
         """ Triggered when other room has reported the 'event', we have to act on this!"""
         if event == DoubleRoomStatus.TEAM_WON:
             self.logic.room_won()
-            self.logic.audio_handler.set_custom_sound(Audio.team2_won, directory=Audio.path)
+            audio_file = Audio.team2_won
 
         elif event == DoubleRoomStatus.TEAM_LOST:
             self.logic.room_lost()
-            self.logic.audio_handler.set_custom_sound(Audio.team1_won, directory=Audio.path)
+            audio_file = Audio.team1_won
         
         self.logic.audio_handler.stop_all_music_and_sound()
-        self.logic.audio_handler.play_custom_sound()
+        self.logic.audio_handler.play_custom_sound_now(audio_file, Audio.path, 1, 1.2)
 
     def on_connection_lost(self):
         """ Connection was lost to the server """

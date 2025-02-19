@@ -27,7 +27,7 @@ class AudioHandler():
     __background_music_level: float = 1.0
 
     def __init__(self, root_path_to_audio: str):
-        mixer.pre_init(44100, -16, 5, 2048*3)
+        mixer.pre_init(44100, -16, 5, 2048*2)
         mixer.init()
 
         mixer.music.load(f"{root_path_to_audio}/music/bgsong_reduced.mp3")
