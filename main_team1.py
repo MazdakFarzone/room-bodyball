@@ -1,7 +1,7 @@
 from signal import pause
 
 from utils.FSM import GameLogic
-from utils.constants import BadEvent, Language
+from utils.constants import BadEvent, Language, DoubleRoomStatus
 
 from gpiozero import DigitalInputDevice
 from settings import PINS, GameSettings as GS, Team, Audio
@@ -18,6 +18,7 @@ class TheGame():
         self.logic = GameLogic(self.on_game_idle, self.on_game_starting, self.on_game_started,
                                self.on_something_went_wrong, self.on_connection_lost, game_length_sec=1000)
         
+        self.logic.set_double_room_event_listener(self.on_other_team_reported)
         self.logic.start(debug_mode=GS.debug_mode)
 
     def on_game_idle(self):
@@ -35,6 +36,14 @@ class TheGame():
     def on_something_went_wrong(self, event: BadEvent):
         """ Is triggered when something bad has happened as described by the parameter 'BadEvent' """
         print(f"GAME: Something went wrong!: {event.name}")
+    
+    def on_other_room_reported(self, event: DoubleRoomStatus):
+        """ Triggered when other room has reported the 'event', we have to act on this!"""
+        if event == DoubleRoomStatus.TEAM_WON:
+            self.logic.room_won()
+
+        elif event == DoubleRoomStatus.TEAM_LOST:
+            self.logic.room_lost()
 
     def on_connection_lost(self):
         """ Connection was lost to the server """

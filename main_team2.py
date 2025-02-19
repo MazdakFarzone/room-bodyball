@@ -1,7 +1,7 @@
 from signal import pause
 
 from utils.FSM import GameLogic
-from utils.constants import BadEvent, Language
+from utils.constants import BadEvent, Language, DoubleRoomStatus
 
 from gpiozero import DigitalInputDevice
 from settings import PINS, GameSettings as GS, Team, Audio
@@ -31,6 +31,7 @@ class TheGame():
         self.logic.auto_play_background_music = False
         self.logic.audio_handler.change_ending_volume(1.0)
         self.logic.handle_max_time_reached(self.max_time_reached)
+        self.logic.set_double_room_event_listener(self.on_other_room_reported)
         self.logic.start(debug_mode=GS.debug_mode)
     
     def on_score(self, team: Team):
@@ -52,13 +53,17 @@ class TheGame():
         
     def max_time_reached(self):
         if self.scores[0] > self.scores[1]:
-            self.logic.audio_handler.change_losing_sound(Audio.team1_won, Audio.path)
-            self.logic.room_lost(with_feedback=False)
+            self.logic.room_lost()
+            self.logic.audio_handler.stop_all_music_and_sound()
+            self.logic.audio_handler.set_custom_sound(Audio.team1_won, directory=Audio.path)
+            self.logic.audio_handler.play_custom_sound()
             self.accept_goal = False
         
         elif self.scores[1] > self.scores[0]:
-            self.logic.audio_handler.change_winning_sound(Audio.team2_won, Audio.path)
             self.logic.room_won()
+            self.logic.audio_handler.stop_all_music_and_sound()
+            self.logic.audio_handler.set_custom_sound(Audio.team2_won, directory=Audio.path)
+            self.logic.audio_handler.play_custom_sound()
             self.accept_goal = False
 
         else:
@@ -82,12 +87,25 @@ class TheGame():
     def on_something_went_wrong(self, event: BadEvent):
         """ Is triggered when something bad has happened as described by the parameter 'BadEvent' """
         self.logic.audio_handler.stop_all_music_and_sound()
-        self.logic.audio_handler.play_losing_sound(False, False)
+        self.logic.audio_handler.play_winning_sound(True, 500)
 
         if event == BadEvent.GAME_ENDED:
             self.max_time_reached()
         else:
             self.accept_goal = False
+
+    def on_other_room_reported(self, event: DoubleRoomStatus):
+        """ Triggered when other room has reported the 'event', we have to act on this!"""
+        if event == DoubleRoomStatus.TEAM_WON:
+            self.logic.room_won()
+            self.logic.audio_handler.set_custom_sound(Audio.team2_won, directory=Audio.path)
+
+        elif event == DoubleRoomStatus.TEAM_LOST:
+            self.logic.room_lost()
+            self.logic.audio_handler.set_custom_sound(Audio.team1_won, directory=Audio.path)
+        
+        self.logic.audio_handler.stop_all_music_and_sound()
+        self.logic.audio_handler.play_custom_sound()
 
     def on_connection_lost(self):
         """ Connection was lost to the server """
