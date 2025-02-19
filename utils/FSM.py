@@ -320,13 +320,13 @@ class GameLogic(object):
         if Topics.ROOM_STATUS.value in topic:
             other_room_status = msg["status"]
             
-            if other_room_status == RoomStatus.LOST.value and slave:
+            if other_room_status == RoomStatus.LOST.value and slave and self.state == 'active':
                 if type == DoubleRoomType.COMPETITION:
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                 elif type == DoubleRoomType.COOPERATIVE:
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_LOST)
 
-            elif other_room_status == RoomStatus.WON.value and slave:
+            elif other_room_status == RoomStatus.WON.value and slave and self.state == 'active':
                 if type == DoubleRoomType.COMPETITION:
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_LOST)
                 elif type == DoubleRoomType.COOPERATIVE:
@@ -341,7 +341,7 @@ class GameLogic(object):
         elif Topics.DOOR_STATUS.value in topic:
             other_room_info = msg['info']
 
-            if other_room_info == DoorStatus.DOOR_OPENED_FAILED.value:
+            if other_room_info == DoorStatus.DOOR_OPENED_FAILED.value and self.state == 'active':
                 if type == DoubleRoomType.COMPETITION:
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                 elif type == DoubleRoomType.COOPERATIVE:
@@ -502,9 +502,6 @@ class GameLogic(object):
             with_feedback = event.kwargs.get("feedback")
             close_call = event.kwargs.get("close")
             self.audio_handler.play_losing_sound(run_end_voice=with_feedback, close_call=close_call)
-
-            if is_from_other_room:
-                self.game_went_wrong(BadEvent.DOUBLE_ROOM_FAILED)
 
             if not self.__debug_mode:
                 self.communicator.send_room_status(RoomStatus.LOST.value)
