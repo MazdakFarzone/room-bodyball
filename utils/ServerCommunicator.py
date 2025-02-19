@@ -153,7 +153,8 @@ class ServerCommunicator(object):
         self.config_callback = on_config
         self.disconnect_callback = on_server_lost
         self.is_a_spy = is_a_spy
-
+        
+        self.double_room_slave = False
         self.room_other = None
         
         self.macaddress = str(netifaces.ifaddresses('eth0')[
@@ -300,15 +301,16 @@ class ServerCommunicator(object):
         if 'roomType' in config:
             self.room_type = DoubleRoomType(str(config['roomType'])) 
             self.room_other = config['otherRoomNbr']
-            print(f"ServerFinder: Recieved a double room configuration - {self.room_type.name} - other room nbr: {self.room_other}")
-            if 'isRoomSpy' in config and config['isRoomSpy']:
+            if 'isRoomSpy' in config:
                 # If we are a spy (slave unit) we listen to what the other room reports and react accordingly
-                self.mqttclient.subscribe("room/" + self.room_other + "/room_status", qos=2)
-                print(f"ServerFinder: We are a events spy... subscribe to the room status'")
+                self.double_room_slave = config['isRoomSpy']
+            self.mqttclient.subscribe("room/" + self.room_other + "/room_status", qos=2)
             self.mqttclient.subscribe("door/" + self.room_other + "/door_status", qos=2)
             
         else:
             self.room_type = None
+            self.double_room_slave = False
+            self.room_other = None
 
         self.config_callback(True, config)
 
@@ -332,6 +334,10 @@ class ServerCommunicator(object):
 
     def get_room_type(self):
         return self.room_type
+
+    def is_double_room_slave(self):
+        """ Do we listen to the other rooms win and lose events? and act on it?"""
+        return self.double_room_slave
     
     def send_ping(self):
         ip = self.__get_ip_addr()

@@ -14,9 +14,6 @@ class BadEvent(Enum):
     REBOOTING = 4
     GAME_ENDED = 5
     MAX_TIME_REACHED = 6
-    
-    DOUBLE_ROOM_FAILED = 7
-    DOUBLE_ROOM_WON = 8
 
 class RoomStatus(Enum):
     """ Status of the room that is send to topic 'room status'"""
@@ -36,6 +33,11 @@ class DoubleRoomType(Enum):
     """ What type of combined room is it? React accordingly"""
     COMPETITION = "competitive"
     COOPERATIVE = "cooperative"
+
+class DoubleRoomStatus(Enum):
+    """ Handle events based on what happened for the other room, You have to take action on these events """
+    TEAM_WON = 1
+    TEAM_LOST = 2
 
 class DoorStatus(Enum):
     """ Extened info coming from the door is described here """
