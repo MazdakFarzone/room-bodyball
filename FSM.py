@@ -307,35 +307,37 @@ class GameLogic(object):
 
     def __cb_on_message_other_received(self, topic, msg):
         type = self.communicator.get_room_type()
+        #print(f"LOGIC: Other room message - topic: {topic}, - msg: {msg}")
 
         if Topics.ROOM_STATUS.value in topic:
             other_room_status = msg["status"]
             
             if other_room_status == RoomStatus.LOST.value:
-                if type == DoubleRoomType.COMPETITION.value:
+                if type == DoubleRoomType.COMPETITION:
                     self.trigger("game_won", other_room=True)
-                elif type == DoubleRoomType.COOPERATIVE.value:
+                elif type == DoubleRoomType.COOPERATIVE:
                     self.trigger("game_lost", other_room=True)
 
             elif other_room_status == RoomStatus.WON.value:
-                if type == DoubleRoomType.COMPETITION.value:
+                if type == DoubleRoomType.COMPETITION:
                     self.trigger("game_lost", other_room=True)
-                elif type == DoubleRoomType.COOPERATIVE.value:
+                elif type == DoubleRoomType.COOPERATIVE:
                     self.trigger("game_won", other_room=True)
                     
             elif other_room_status == RoomStatus.RESET.value:
-                if type == DoubleRoomType.COMPETITION.value:
+                if type == DoubleRoomType.COMPETITION:
                     self.trigger("game_won", other_room=True)
-                elif type == DoubleRoomType.COOPERATIVE.value:
+                elif type == DoubleRoomType.COOPERATIVE:
                     self.trigger("game_reset", other_room=True)
 
         elif Topics.DOOR_STATUS.value in topic:
             other_room_info = msg['info']
 
             if other_room_info == DoorStatus.DOOR_OPENED_FAILED.value:
-                if type == DoubleRoomType.COMPETITION.value:
+                print("LOGIC: Door opened failed!")
+                if type == DoubleRoomType.COMPETITION:
                     self.trigger("game_won", other_room=True)
-                elif type == DoubleRoomType.COOPERATIVE.value:
+                elif type == DoubleRoomType.COOPERATIVE:
                     self.trigger("game_lost", other_room=True)
 
     def __cb_server_conf_recieved(self, success, config: dict):
