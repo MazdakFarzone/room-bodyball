@@ -2,7 +2,7 @@ from transitions import Machine, EventData
 from transitions.extensions.states import add_state_features, Timeout
 
 from .AudioHandler import AudioHandler, AudioType
-from .constants import Access, BadEvent, RoomStatus, GameStatus, DoorStatus, Language, Topics, DoubleRoomType
+from .constants import Access, BadEvent, RoomStatus, DoorStatus, Language, Topics, DoubleRoomType, DoubleRoomStatus
 from .ServerCommunicator import ServerFinder, ServerCommunicator
 from .GameTimer import GameTimer
 from .log import Log
@@ -81,6 +81,7 @@ class GameLogic(object):
         self.__on_door_opening: Callable[[None], None] = None
         self.__on_max_time_reached: Callable[[None], None] = None
         self.__on_shutdown_called: Callable[[None], None] = None
+        self.__on_double_room_event: Callable[[DoubleRoomStatus], None] = None
         
         self.__points = None
         self.__game_length_sec = game_length_sec
@@ -147,6 +148,10 @@ class GameLogic(object):
     def set_team_entering_door_opened_listener(self, callback: Callable[[None], None]):
         """ If you want to listen to when a team has opened the door and about to enter, set the callback"""
         self.__on_door_opening = callback
+
+    def set_double_room_event_listener(self, callback: Callable[[DoubleRoomStatus], None]):
+        """ Setting an event listener so you could do special stuff when your double room reports, take action on the returned event!"""
+        self.__on_double_room_event = callback
 
     def handle_max_time_reached(self, callback: Callable[[None], None]):
         """ If you want to manually handle when max time has been reached, set the callable! or else the room is set
@@ -307,38 +312,40 @@ class GameLogic(object):
 
     def __cb_on_message_other_received(self, topic, msg):
         type = self.communicator.get_room_type()
+        slave = self.communicator.is_double_room_slave()
         #print(f"LOGIC: Other room message - topic: {topic}, - msg: {msg}")
+        if self.__on_double_room_event is None:
+            raise Exception("Event listener not set for double room events!! cannot proceed")
 
         if Topics.ROOM_STATUS.value in topic:
             other_room_status = msg["status"]
             
-            if other_room_status == RoomStatus.LOST.value:
+            if other_room_status == RoomStatus.LOST.value and slave:
                 if type == DoubleRoomType.COMPETITION:
-                    self.trigger("game_won", other_room=True)
+                    self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                 elif type == DoubleRoomType.COOPERATIVE:
-                    self.trigger("game_lost", other_room=True)
+                    self.__on_double_room_event(DoubleRoomStatus.TEAM_LOST)
 
-            elif other_room_status == RoomStatus.WON.value:
+            elif other_room_status == RoomStatus.WON.value and slave:
                 if type == DoubleRoomType.COMPETITION:
-                    self.trigger("game_lost", other_room=True)
+                    self.__on_double_room_event(DoubleRoomStatus.TEAM_LOST)
                 elif type == DoubleRoomType.COOPERATIVE:
-                    self.trigger("game_won", other_room=True)
+                    self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                     
             elif other_room_status == RoomStatus.RESET.value:
                 if type == DoubleRoomType.COMPETITION:
-                    self.trigger("game_won", other_room=True)
+                    self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                 elif type == DoubleRoomType.COOPERATIVE:
-                    self.trigger("game_reset", other_room=True)
+                    self.trigger("game_reset")
 
         elif Topics.DOOR_STATUS.value in topic:
             other_room_info = msg['info']
 
             if other_room_info == DoorStatus.DOOR_OPENED_FAILED.value:
-                print("LOGIC: Door opened failed!")
                 if type == DoubleRoomType.COMPETITION:
-                    self.trigger("game_won", other_room=True)
+                    self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                 elif type == DoubleRoomType.COOPERATIVE:
-                    self.trigger("game_lost", other_room=True)
+                    self.__on_double_room_event(DoubleRoomStatus.TEAM_LOST)
 
     def __cb_server_conf_recieved(self, success, config: dict):
         if success:
@@ -464,8 +471,6 @@ class GameLogic(object):
         self.game_active = False
         self.__game_timer.cancel()
 
-        is_from_other_room: bool = event.kwargs.get("other_room", False)
-
         # You opened the door and ended the game, or held the door open for too long
         # Will occur if the team aren't closing the door fast enough!
         if (str(event.event.name) == 'door_failed'):
@@ -492,9 +497,6 @@ class GameLogic(object):
                 
             max_level_reached = AudioType.MAX_REACHED if level == len(self.__points) else AudioType.POSITIVE
             self.audio_handler.play_winning_sound(True, int(self.__points[level-1]), max_level_reached)
-
-            if is_from_other_room:
-                self.game_went_wrong(BadEvent.DOUBLE_ROOM_WON)
 
         elif (str(event.event.name) == 'game_lost'):
             with_feedback = event.kwargs.get("feedback")
