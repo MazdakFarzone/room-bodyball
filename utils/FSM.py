@@ -333,7 +333,7 @@ class GameLogic(object):
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                     
             elif other_room_status == RoomStatus.RESET.value:
-                if type == DoubleRoomType.COMPETITION:
+                if type == DoubleRoomType.COMPETITION and self.state == 'active':
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                 elif type == DoubleRoomType.COOPERATIVE:
                     self.trigger("game_reset")
