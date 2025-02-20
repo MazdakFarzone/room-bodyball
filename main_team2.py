@@ -41,12 +41,13 @@ class TheGame():
         if GS.debug_mode:
             print(f"SCORE: Got score from: {team.name}")
         
+        # Which side does the photocell belong to?
         if team == Team.TEAM1:
             audio_file = Audio.team1_score
-            self.scores[0] += 1
+            self.scores[1] += 1 # Set the score correct
         else:
             audio_file = Audio.team2_score
-            self.scores[1] += 1
+            self.scores[0] += 1
         
         if self.sudden_death:
             self.max_time_reached()
