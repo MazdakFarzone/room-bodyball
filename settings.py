@@ -19,6 +19,7 @@ class PINS:
 
 class Audio:
     path = f"{os.path.dirname(os.path.realpath(__file__))}{os.path.sep}extras"
+    ready_go = "readygo-loud2.mp3"
     team1_score = "team1.wav"
     team2_score = "team2.wav"
     sudden_death = "sudden_death.mp3"

@@ -6,6 +6,8 @@ from utils.constants import BadEvent, Language, DoubleRoomStatus
 from gpiozero import DigitalInputDevice
 from settings import PINS, GameSettings as GS, Team, Audio
 
+from threading import Timer
+
 # The library called 'pigpio' can handle software debouncing and other features a lot better than the standard library
 # hence we set it here so that any further handling of pins through the library 'gpiozero' is handled by 'pigpio'
 # Device.pin_factory = PiGPIOFactory()
@@ -19,6 +21,7 @@ class TheGame():
         self.sudden_death = False
         self.scores = [0, 0] # Team 1 at pos 0, team 2 at pos 1
         self.devs = []
+        self.intro_timer: Timer = None
 
         for setup_list in PINS.photocells_list:
             dev = DigitalInputDevice(setup_list['pin'], pull_up=True, bounce_time=0.01)
@@ -80,17 +83,26 @@ class TheGame():
     def on_game_starting(self, members: int, lang: Language):
         """ Is triggered when the game is about to start, also sends the number of people in the group """
         print(f"GAME: Game is starting with {members} people, in {lang.value}")
+        self.accept_goal = False
 
     def on_game_started(self):
         """ Is triggered when game has started """
         print("GAME: Game is now ready")
+        intro_time = self.logic.audio_handler.play_custom_sound_now(Audio.ready_go, Audio.path, 1, 1)
+        self.intro_timer = Timer(intro_time, self.intro_time_finished)
+        self.intro_timer.start() 
+    
+    def intro_time_finished(self):
         self.scores = [0, 0]
         self.sudden_death = False
         self.accept_goal = True
+        self.intro_timer = None
 
     def on_something_went_wrong(self, event: BadEvent):
         """ Is triggered when something bad has happened as described by the parameter 'BadEvent' """
         self.logic.audio_handler.stop_all_music_and_sound()
+        if self.intro_timer is not None:
+            self.intro_timer.cancel()
 
         if event == BadEvent.GAME_ENDED:
             self.max_time_reached()
@@ -103,6 +115,9 @@ class TheGame():
 
     def on_other_room_reported(self, event: DoubleRoomStatus):
         """ Triggered when other room has reported the 'event', we have to act on this!"""
+        if self.intro_timer is not None:
+            self.intro_timer.cancel()
+
         if event == DoubleRoomStatus.TEAM_WON:
             self.logic.room_won()
             audio_file = Audio.team2_won
