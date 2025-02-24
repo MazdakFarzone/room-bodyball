@@ -18,7 +18,7 @@ class TheGame():
         self.logic = GameLogic(self.on_game_idle, self.on_game_starting, self.on_game_started,
                                self.on_something_went_wrong, self.on_connection_lost, game_length_sec=1000)
         
-        self.logic.set_double_room_event_listener(self.on_other_team_reported)
+        self.logic.set_double_room_event_listener(self.on_other_room_reported)
         self.logic.start(debug_mode=GS.debug_mode)
 
     def on_game_idle(self):
