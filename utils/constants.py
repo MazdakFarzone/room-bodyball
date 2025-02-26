@@ -43,6 +43,7 @@ class DoorStatus(Enum):
     """ Extened info coming from the door is described here """
     DOOR_OPENING_STARTING = "Door Opening (Starting)"
     DOOR_CLOSED_STARTING = "Door Closed (Starting)"
+    ACTIVE = "Game active"
     DOOR_OPENED_FAILED = "Door Opened (Failed)"
     TEAM_STILL_IN_ROOM = "Team loitering"
     CLOSED = "Closed"
