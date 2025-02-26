@@ -63,14 +63,14 @@ class GameLogic(object):
     ]
 
     def __init__(self, game_idle: Callable[[None], None], game_starting: Callable[[int, Language], None], game_started: Callable[[None], None],
-                 game_went_wrong: Callable[[BadEvent], None],  on_connection_lost: Callable[[None], None] = None, game_length_sec: int = 300) -> None:
+                 game_went_wrong: Callable[[BadEvent], None],  on_connection_lost: Callable[[None], None] = None, game_length_sec: int = 300, audio_buffer=4096) -> None:
         
         self.game_active = False
         """ Indicates whether the game is active or not, used for moments when the server has disconnected to return to the game state
         """
 
         """ The main logic of the Game, handles every boring aspect """
-        self.audio_handler = AudioHandler(f"{os.path.dirname(os.path.realpath(__file__))}{os.path.sep}sounds")
+        self.audio_handler = AudioHandler(f"{os.path.dirname(os.path.realpath(__file__))}{os.path.sep}sounds", audio_buffer)
         """ Audio handler (accessible as a member in GameLogic for advanced users) """
 
         self.auto_play_background_music = True
@@ -79,6 +79,7 @@ class GameLogic(object):
         # Optional listeners
         self.__on_connection_lost: Callable[[None], None] = None
         self.__on_door_opening: Callable[[None], None] = None
+        self.__on_door_closed: Callable[[None], None] = None
         self.__on_max_time_reached: Callable[[None], None] = None
         self.__on_shutdown_called: Callable[[None], None] = None
         self.__on_double_room_event: Callable[[DoubleRoomStatus], None] = None
@@ -148,6 +149,10 @@ class GameLogic(object):
     def set_team_entering_door_opened_listener(self, callback: Callable[[None], None]):
         """ If you want to listen to when a team has opened the door and about to enter, set the callback"""
         self.__on_door_opening = callback
+    
+    def set_team_entered_door_closed_listener(self, callback: Callable[[None], None]):
+        """ If you want to listen to when a team has closed the door and we are about to start, set the callback"""
+        self.__on_door_closed = callback
 
     def set_double_room_event_listener(self, callback: Callable[[DoubleRoomStatus], None]):
         """ Setting an event listener so you could do special stuff when your double room reports, take action on the returned event!"""
@@ -283,9 +288,14 @@ class GameLogic(object):
 
             elif info == DoorStatus.DOOR_OPENING_STARTING.value:
                 self.trigger("game_starting")
-
+            
             elif info == DoorStatus.DOOR_CLOSED_STARTING.value:
-                # Door has closed and is about to start
+                # Door has closed, check if we have a callback set
+                if self.__on_door_closed is not None:
+                    self.__on_door_closed()
+
+            elif info == DoorStatus.ACTIVE.value:
+                # Door has closed and we've entered the active phase
                 self.trigger("game_active")
 
             elif info == DoorStatus.DOOR_OPENED_FAILED.value:
