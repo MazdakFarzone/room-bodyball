@@ -361,7 +361,12 @@ class GameLogic(object):
             
             elif other_door_info == DoorStatus.TEAM_STILL_IN_ROOM.value and self.state != 'ended':
                 # If we are in ended as well we are perhaps taking care of this already, no need to be nagging
-                self.__cb_server_message_received(topic, msg)
+                self.__times_played_please_leave +=1
+                if self.__times_played_please_leave == 4:
+                    self.audio_handler.play_please_leave_room(last_statement=True, volume=0.8)
+                    self.__times_played_please_leave = 0
+                else:
+                    self.audio_handler.play_please_leave_room(volume=0.5)
 
     def __cb_server_conf_recieved(self, success, config: dict):
         if success:
