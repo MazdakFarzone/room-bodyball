@@ -30,7 +30,7 @@ class GameLogic(object):
 
     # Transitions, init is required because find_server is not triggered on startup (dummy state required)
     transitions = [
-        {"trigger": "start_logic",       "source": "init", "dest": "find_server"},
+        {"trigger": "start_logic",         "source": "init", "dest": "find_server"},
         {"trigger": "server_found",        "source": "find_server", "dest": "connecting_to_server"},
         {"trigger": "server_not_found",    "source": "find_server", "dest": "find_server"},
         {"trigger": "server_is_connected", "source": "find_server", "dest": "get_config"},
@@ -136,9 +136,7 @@ class GameLogic(object):
         
         Optional parameter 'debug_mode' can be set so that it automatically calls room activation after a couple of seconds!
         """
-        if not debug_mode:
-            self.server_finder.search()
-        else:
+        if debug_mode:
             self.__debug_thread = Timer(.5, self.__cb_found_server, ["", 0])
             self.__debug_thread.start()
         
@@ -361,7 +359,7 @@ class GameLogic(object):
                 elif type == DoubleRoomType.COOPERATIVE:
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_LOST)
             
-            elif other_door_info == DoorStatus.TEAM_STILL_IN_ROOM and self.state != 'idle':
+            elif other_door_info == DoorStatus.TEAM_STILL_IN_ROOM.value and self.state != 'idle':
                 self.__cb_server_message_received(topic, msg)
 
     def __cb_server_conf_recieved(self, success, config: dict):
