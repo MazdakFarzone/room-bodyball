@@ -293,6 +293,10 @@ class GameLogic(object):
                 # Door has closed, check if we have a callback set
                 if self.__on_door_closed is not None:
                     self.__on_door_closed()
+                
+                if self.__debug_mode:
+                    self.__debug_thread = Timer(0.5, self.__cb_server_message_received, ["door_status", { 'info': DoorStatus.ACTIVE.value}])
+                    self.__debug_thread.start()
 
             elif info == DoorStatus.ACTIVE.value:
                 # Door has closed and we've entered the active phase
@@ -349,13 +353,16 @@ class GameLogic(object):
                     self.trigger("game_reset")
 
         elif Topics.DOOR_STATUS.value in topic:
-            other_room_info = msg['info']
+            other_door_info = msg['info']
 
-            if other_room_info == DoorStatus.DOOR_OPENED_FAILED.value and self.state == 'active':
+            if other_door_info == DoorStatus.DOOR_OPENED_FAILED.value and self.state == 'active':
                 if type == DoubleRoomType.COMPETITION:
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_WON)
                 elif type == DoubleRoomType.COOPERATIVE:
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_LOST)
+            
+            elif other_door_info == DoorStatus.TEAM_STILL_IN_ROOM and self.state != 'idle':
+                self.__cb_server_message_received(topic, msg)
 
     def __cb_server_conf_recieved(self, success, config: dict):
         if success:
