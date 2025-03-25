@@ -359,7 +359,8 @@ class GameLogic(object):
                 elif type == DoubleRoomType.COOPERATIVE:
                     self.__on_double_room_event(DoubleRoomStatus.TEAM_LOST)
             
-            elif other_door_info == DoorStatus.TEAM_STILL_IN_ROOM.value and self.state != 'idle':
+            elif other_door_info == DoorStatus.TEAM_STILL_IN_ROOM.value and self.state != 'ended':
+                # If we are in ended as well we are perhaps taking care of this already, no need to be nagging
                 self.__cb_server_message_received(topic, msg)
 
     def __cb_server_conf_recieved(self, success, config: dict):
