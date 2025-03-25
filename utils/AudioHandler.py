@@ -177,6 +177,14 @@ class AudioHandler():
     
     def background_music_is_playing(self):
         return mixer.music.get_busy()
+
+    def logic_sound_playing(self) -> bool:
+        """Return if the logic channel is playing. Would be points, feedback, losing and winning sounds
+
+        Returns:
+            bool: If its playing
+        """
+        return self.__channel_logic.get_busy()
     
     def custom_sound_playing(self) -> bool:
         """Return if the default custom sound is playing
