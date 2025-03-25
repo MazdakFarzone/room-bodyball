@@ -100,7 +100,10 @@ class TheGame():
 
     def on_something_went_wrong(self, event: BadEvent):
         """ Is triggered when something bad has happened as described by the parameter 'BadEvent' """
-        self.logic.audio_handler.stop_all_music_and_sound()
+        if event != BadEvent.THROW_OUT_GROUP:
+            # We want them to hear the resetting room sound
+            self.logic.audio_handler.stop_all_music_and_sound()
+        
         if self.intro_timer is not None:
             self.intro_timer.cancel()
 
