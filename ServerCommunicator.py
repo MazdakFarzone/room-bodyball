@@ -64,11 +64,14 @@ class ServerFinder(object):
             print("ServerFinder: Unknown IP, restarting ...")
             self.__check_online_thread = Timer(0.5, self.search)
             self.__check_online_thread.start()
+            
         elif self.__no_times_searched <= 5:
             self.__zeroconf = Zeroconf(ip_version=IPVersion.V4Only)
             self.__browser = ServiceBrowser(self.__zeroconf, ServerFinder.services, handlers=[
                 self.on_service_state_change])
             self.__no_times_searched += 1
+            print("ServerFinder:  Searching ...")
+            
         else:
             print("ServerFinder: Forcing permanent fallback IP ...")
             self.__on_server_found(
