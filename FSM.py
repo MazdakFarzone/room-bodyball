@@ -249,6 +249,8 @@ class GameLogic(object):
         self.trigger("server_lost")
 
     def __cb_server_message_received(self, topic, message):
+        # Debug print
+        #print("LOGIC: Recieved topic: " + topic + " - message: " + json.dumps(message))
         if Topics.SET_STATUS.value in topic:
             msg = message['access']
 
@@ -258,7 +260,11 @@ class GameLogic(object):
 
             elif msg == RoomStatus.RESET.value:
                 # Play game over sounds also! to indicate that they should leave the room
-                self.trigger("game_reset", send_to_server=False)
+                # Is this dead code? We are sending door status idling to reset the rooms now
+                if self.state == 'active':
+                    self.trigger("game_ended", reason=BadEvent.THROW_OUT_GROUP)
+                else:
+                    self.trigger("game_reset", send_to_server=False)
             
             elif msg == RoomStatus.REBOOT.value: 
                 self.trigger("reboot_system")
@@ -277,7 +283,10 @@ class GameLogic(object):
                     # We haven't received our config yet
                     return
                 
-                if self.state != "ended":
+                if self.state == 'active':
+                    self.trigger("game_ended", reason=BadEvent.THROW_OUT_GROUP)
+                    
+                elif self.state != "ended":
                     # Eg. when door has been blipped and no one opened, they just ignored. we just reset
                     self.trigger("game_reset", send_to_server=False)
                 else:
@@ -319,8 +328,7 @@ class GameLogic(object):
                 # No need for trigger as the server grants us access
                 self.trigger("access_granted", members=message['members'], lang=Language(message['lang']))
 
-        # Debug print
-        # print("LOGIC: Recieved topic: " + topic + " - message: " + json.dumps(message))
+        
 
     def __cb_on_message_other_received(self, topic, msg):
         type = self.communicator.get_room_type()
@@ -435,6 +443,7 @@ class GameLogic(object):
         self.audio_handler.stop_all_music_and_sound()
         self.__times_played_please_leave = 0
         
+        # Since we can end up here from many places we need to double check and notify the programming
         if str(event.event.name) == "game_reset":
             send_to_server = event.kwargs.get("send_to_server")
             fucking_leave = event.kwargs.get("final_sendoff", False)
@@ -443,9 +452,9 @@ class GameLogic(object):
                 if not self.__debug_mode:
                     self.communicator.send_room_status(RoomStatus.RESET.value)
                 # We have tried to send them from the room, but they won't leave, resetting now!
-                if fucking_leave:
-                    self.audio_handler.play_please_leave_room(last_statement=True, volume=0.8)
-                    self.game_went_wrong(BadEvent.THROW_OUT_GROUP)
+            if fucking_leave:
+                self.audio_handler.play_please_leave_room(last_statement=True, volume=0.8)
+                self.game_went_wrong(BadEvent.THROW_OUT_GROUP)
 
         self.communicator.send_room_status(RoomStatus.READY.value)
         self.game_idle()
@@ -500,9 +509,12 @@ class GameLogic(object):
         
         elif (str(event.event.name) == 'game_ended'):
             reason: BadEvent = event.kwargs.get("reason")
-            print("Reason: " + reason.name)
             if reason == BadEvent.GAME_ENDED:
                 self.trigger("get_feedback")
+            elif reason == BadEvent.THROW_OUT_GROUP:
+                # We were active and the team entered another room - cheaters! Reset room, in idle we will send the appropriate response
+                # ensuring proper shutdown sequence etc.
+                self.trigger("game_reset", send_to_server=False, final_sendoff=True)
             else:
                 self.audio_handler.play_losing_sound()
                 self.game_went_wrong(reason)
