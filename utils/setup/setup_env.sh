@@ -38,8 +38,9 @@ git config --global user.email "mazdak.farzone@gmail.com"
 #sudo systemctl start pigpiod
 
 echo "Setting up shutdown/reboot logic ..."
-mkdir -p $HOME/system-handler
-cp systemhandler.py ../constants.py ../ServerCommunicator.py $HOME/system-handler
+mkdir -p $HOME/system-handler/utils
+cp ../constants.py ../ServerCommunicator.py $HOME/system-handler/utils
+cp systemhandler.py $HOME/system-handler/
 sudo cp system-condition.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable system-condition.service
