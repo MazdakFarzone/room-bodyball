@@ -1,5 +1,6 @@
-from ServerCommunicator import ServerFinder, ServerCommunicator
-from constants import Topics, RoomStatus
+# We need to have the utils subdir for the relative paths to work in e.g. Servercommunicator
+from utils.ServerCommunicator import ServerFinder, ServerCommunicator
+from utils.constants import Topics, RoomStatus
 import os
 from signal import pause
 from threading import Timer

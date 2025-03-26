@@ -26,7 +26,7 @@ class GameLogic(object):
               {"name": "find_server", "timeout": (8 + randint(-2, 2)), "on_timeout": "server_not_found"},
               {"name": "connecting_to_server", "timeout": (15 + randint(-2, 2)), "on_timeout": "server_conn_failed"},
               {"name": "get_config", "timeout": (5 + randint(-1, 3)), "on_timeout": "config_failed"},
-              "tag_scanned", "door_open", "active", "closed", "shutting_down", "ended", "ended_feedback"]
+              "tag_scanned", "door_open", "active", "closed", "shutting_down", "ended", "ended_feedback", "reboot_state"]
 
     # Transitions, init is required because find_server is not triggered on startup (dummy state required)
     transitions = [
